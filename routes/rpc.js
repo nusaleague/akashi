@@ -13,30 +13,52 @@ route.post('/rpc/public',
 
 route.post('/rpc/user',
   (req, res, next) => {
-    if (req.user) {
-      return next()
+    const {user} = req
+
+    if (!user) {
+      req.app.log.debug('User is not logged in')
+      return res.sendStatus(403)
     }
-    return res.sendStatus(403)
+
+    return next()
   },
   createDispatcher('user')
 )
 
 route.post('/rpc/staff',
   (req, res, next) => {
-    if (req.user && req.user.isStaff) {
-      return next()
+    const {user} = req
+
+    if (!user) {
+      req.app.log.debug('User is not logged in')
+      return res.sendStatus(403)
     }
-    return res.sendStatus(403)
+
+    if (!user.isStaff) {
+      req.app.log.debug({user}, 'User is not a staff')
+      return res.sendStatus(403)
+    }
+
+    return next()
   },
   createDispatcher('staff')
 )
 
 route.post('/rpc/pic',
   (req, res, next) => {
-    if (req.user && req.user.isPIC) {
-      return next()
+    const {user} = req
+
+    if (!user) {
+      req.app.log.debug('User is not logged in')
+      return res.sendStatus(403)
     }
-    return res.sendStatus(403)
+
+    if (!user.isPIC) {
+      req.app.log.debug({user}, 'User is not a PIC')
+      return res.sendStatus(403)
+    }
+
+    return next()
   },
   createDispatcher('pic')
 )
@@ -51,7 +73,11 @@ function createDispatcher(type) {
 
   return (req, res, next) => {
     (async () => {
-      return res.json(await dispatcher.dispatchRaw(req.body))
+      const request = req.body
+      const response = await dispatcher.dispatchRaw(request)
+
+      req.app.log.debug({request, response}, 'JSON-RPC call successful')
+      return res.json(response)
     })().catch(next)
   }
 }
