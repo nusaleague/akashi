@@ -1,17 +1,16 @@
-const path = require('path')
 const Chihiro = require('@tkesgar/chihiro')
 const {Router: router, json} = require('express')
-const {sync: glob} = require('glob')
+const methods = require('../rpc')
 
 const route = router()
 
 route.use('/rpc', json())
 
-route.post('/rpc/public',
-  createDispatcher('public')
+route.post('/rpc/pub',
+  dispatchMiddleware(methods.pub)
 )
 
-route.post('/rpc/user',
+route.post('/rpc/usr',
   (req, res, next) => {
     const {user} = req
 
@@ -22,10 +21,10 @@ route.post('/rpc/user',
 
     return next()
   },
-  createDispatcher('user')
+  dispatchMiddleware(methods.usr)
 )
 
-route.post('/rpc/staff',
+route.post('/rpc/stf',
   (req, res, next) => {
     const {user} = req
 
@@ -35,13 +34,13 @@ route.post('/rpc/staff',
     }
 
     if (!user.isStaff) {
-      req.app.log.debug({user}, 'User is not a staff')
+      req.app.log.debug({user}, 'User is not staff')
       return res.sendStatus(403)
     }
 
     return next()
   },
-  createDispatcher('staff')
+  dispatchMiddleware(methods.stf)
 )
 
 route.post('/rpc/pic',
@@ -54,26 +53,23 @@ route.post('/rpc/pic',
     }
 
     if (!user.isPIC) {
-      req.app.log.debug({user}, 'User is not a PIC')
+      req.app.log.debug({user}, 'User is not PIC')
       return res.sendStatus(403)
     }
 
     return next()
   },
-  createDispatcher('pic')
+  dispatchMiddleware(methods.pic)
 )
 
 module.exports = route
 
-function createDispatcher(type) {
-  const dispatcher = new Chihiro(
-    glob(path.resolve(`rpc/${type}/*.js`))
-      .reduce((methods, path) => Object.assign(methods, require(path)), {})
-  )
+function dispatchMiddleware(methods) {
+  const dispatcher = new Chihiro(methods)
 
   return (req, res, next) => {
     (async () => {
-      const request = req.body
+      const {body: request} = req
       const response = await dispatcher.dispatchRaw(request)
 
       req.app.log.debug({request, response}, 'JSON-RPC call successful')
