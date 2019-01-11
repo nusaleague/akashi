@@ -1,79 +1,96 @@
-const Chihiro = require('@tkesgar/chihiro')
+const path = require('path')
 const {Router: router, json} = require('express')
-const methods = require('../rpc')
+const {createServer} = require('@tkesgar/chihiro')
+const {sync: glob} = require('glob')
+const {dev} = require('../lib/env')
+
+const methodDictionary = glob(path.resolve('./rpc/*.js'))
+  .map(path => require(path))
+  .reduce((dictionary, entries) => Object.assign(dictionary, entries), {})
 
 const route = router()
 
-route.use('/rpc', json())
-
-route.post('/rpc/pub',
-  dispatchMiddleware(methods.pub)
-)
-
-route.post('/rpc/usr',
+route.post('/rpc',
+  json(),
   (req, res, next) => {
-    const {user} = req
+    (async () => {
+      const ctx = {
+        user: req.user || null
+      }
 
-    if (!user) {
-      req.app.log.debug('User is not logged in')
-      return res.sendStatus(403)
-    }
+      const server = createServer(createHandler(ctx))
 
-    return next()
-  },
-  dispatchMiddleware(methods.usr)
-)
+      const request = req.body
+      const response = await server.dispatchRequest(request)
+      req.app.log.debug({ctx, request, response}, 'JSON-RPC call')
 
-route.post('/rpc/stf',
-  (req, res, next) => {
-    const {user} = req
+      if (response === null) {
+        res.sendStatus(204)
+        return
+      }
 
-    if (!user) {
-      req.app.log.debug('User is not logged in')
-      return res.sendStatus(403)
-    }
+      if (response.result || Array.isArray(response)) {
+        res.json(response)
+        return
+      }
 
-    if (!user.isStaff) {
-      req.app.log.debug({user}, 'User is not staff')
-      return res.sendStatus(403)
-    }
+      if (response.error) {
+        res.status(getStatusFromCode(response.error.code)).json(response)
+        return
+      }
 
-    return next()
-  },
-  dispatchMiddleware(methods.stf)
-)
-
-route.post('/rpc/pic',
-  (req, res, next) => {
-    const {user} = req
-
-    if (!user) {
-      req.app.log.debug('User is not logged in')
-      return res.sendStatus(403)
-    }
-
-    if (!user.isPIC) {
-      req.app.log.debug({user}, 'User is not PIC')
-      return res.sendStatus(403)
-    }
-
-    return next()
-  },
-  dispatchMiddleware(methods.pic)
+      res.sendStatus(500)
+    })().catch(next)
+  }
 )
 
 module.exports = route
 
-function dispatchMiddleware(methods) {
-  const dispatcher = new Chihiro(methods)
+function createHandler(ctx) {
+  return async (methodName, args) => {
+    const method = methodDictionary[methodName]
+    if (!method) {
+      throw Object.assign(new Error('Method not found'), {code: -32601})
+    }
 
-  return (req, res, next) => {
-    (async () => {
-      const {body: request} = req
-      const response = await dispatcher.dispatchRaw(request)
+    if (method.auth) {
+      const {user} = ctx
+      if (!user) {
+        throw Object.assign(new Error('Authentication required'), {code: -32001})
+      }
 
-      req.app.log.debug({request, response}, 'JSON-RPC call successful')
-      return res.json(response)
-    })().catch(next)
+      if (!method.auth(user)) {
+        throw Object.assign(new Error('Not authorized'), {code: -32003})
+      }
+    }
+
+    const passContext = method.context || methodName.startsWith('ctx_')
+
+    try {
+      const result = await method.call(
+        passContext ? {ctx} : null,
+        ...(Array.isArray(args) ? args : [args])
+      )
+      return result
+    } catch (error) {
+      throw Object.assign(new Error('Method error'), {
+        code: -32000,
+        ...(dev ? {data: error} : {})
+      })
+    }
+  }
+}
+
+function getStatusFromCode(code) {
+  switch (code) {
+    case -32700: return 400
+    case -32600: return 400
+    case -32601: return 404
+    case -32602: return 400
+    case -32603: return 500
+    case -32000: return 500
+    case -32001: return 401
+    case -32003: return 403
+    default: return 500
   }
 }

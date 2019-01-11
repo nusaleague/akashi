@@ -1,19 +1,39 @@
 const conn = require('../lib/database')
+const auth = require('../lib/auth')
 
-async function getRegs() {
-  const results = await conn('reg')
-  return results
-}
-exports.getRegs = getRegs
+async function findAllRegs() {
+  const regs = await conn('reg')
+    .select('id', 'created_time', 'data_json', 'status')
+    .map(row => {
+      const data = JSON.parse(row.data_json)
 
-async function getRegById(id) {
-  const [result] = await conn('reg').where('id', id)
-  return result || null
+      return {
+        id: row.id,
+        created_time: row.created_time,
+        competition: data.mascotComp,
+        mascot_name: data.mascotName,
+        org_name: data.orgName,
+        status: row.status
+      }
+    })
+
+  return regs
 }
-exports.getRegById = getRegById
+findAllRegs.auth = auth.isStaff()
+exports.findAllRegs = findAllRegs
+
+async function findRegById(id) {
+  const [reg] = await conn('reg').where({id})
+
+  return reg
+}
+findRegById.auth = auth.isStaff()
+exports.findRegById = findRegById
 
 async function setRegStatus(id, status, reason) {
-  await conn('reg').where('id', id).update({status, reason})
-  return getRegById(id)
+  await conn('reg').where({id}).update({status, reason})
+
+  return true
 }
+setRegStatus.auth = auth.isStaff()
 exports.setRegStatus = setRegStatus

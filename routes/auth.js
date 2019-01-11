@@ -4,10 +4,10 @@ const {Router: router, urlencoded, json} = require('express')
 const route = router()
 
 route.get('/auth', (req, res) => {
-  const {user = null} = req
+  const {user} = req
 
-  req.app.log.debug({user}, 'Get current authenticated user')
-  res.json(user)
+  req.app.log.debug({user}, 'Auth: get authenticated user')
+  res.json(user || null)
 })
 
 route.get('/auth/logout', (req, res) => {
@@ -15,57 +15,66 @@ route.get('/auth/logout', (req, res) => {
 
   req.logout()
 
-  req.app.log.debug({user}, 'Log out')
-  return res.sendStatus(204)
+  req.app.log.debug({user}, 'Auth: log out')
+  res.sendStatus(204)
 })
 
-route.use('/auth/login/staff',
+route.post('/auth/login/staff',
   urlencoded({extended: false}),
-  json()
+  json(),
+  (req, res, next) => passport.authenticate('staff', (err, user) => {
+    if (err) {
+      req.app.log.debug('Auth(staff): error in authentication strategy')
+      next(err)
+      return
+    }
+
+    if (!user) {
+      req.app.log.debug('Auth(staff): wrong username and/or password')
+      res.sendStatus(401)
+      return
+    }
+
+    req.login(user, err => {
+      if (err) {
+        req.app.log.debug('Auth(staff): error in post-authentication login')
+        next(err)
+        return
+      }
+
+      req.app.log.info({auth: user, user: req.user}, 'Auth(staff): login')
+      res.sendStatus(200)
+    })
+  })(req, res, next)
 )
 
-route.post('/auth/login/staff', (req, res, next) => {
-  passport.authenticate('staff', (err, user) => {
+route.post('/auth/login/pic',
+  urlencoded({extended: false}),
+  json(),
+  (req, res, next) => passport.authenticate('pic', (err, user) => {
     if (err) {
-      return next(err)
+      req.app.log.debug('Auth(pic): error in authentication strategy')
+      next(err)
+      return
     }
 
     if (!user) {
-      req.app.log.debug('Login as staff: wrong username and/or password')
-      return res.sendStatus(401)
+      req.app.log.debug('Auth(pic): wrong username and/or password')
+      res.sendStatus(401)
+      return
     }
 
     req.login(user, err => {
       if (err) {
-        return next(err)
+        req.app.log.debug('Auth(pic): error in post-authentication login')
+        next(err)
+        return
       }
 
-      req.app.log.info({user}, 'Login as staff')
-      return res.sendStatus(200)
+      req.app.log.info({auth: user, user: req.user}, 'Auth(pic): login')
+      res.sendStatus(200)
     })
   })(req, res, next)
-})
-
-route.post('/auth/login/pic', (req, res, next) => {
-  passport.authenticate('pic', (err, user) => {
-    if (err) {
-      return next(err)
-    }
-
-    if (!user) {
-      req.app.log.debug('Login as PIC: wrong username and/or password')
-      return res.sendStatus(401)
-    }
-
-    req.login(user, err => {
-      if (err) {
-        return next(err)
-      }
-
-      req.app.log.info({user}, 'Login as PIC')
-      return res.sendStatus(200)
-    })
-  })(req, res, next)
-})
+)
 
 module.exports = route
