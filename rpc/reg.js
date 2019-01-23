@@ -1,39 +1,60 @@
-const conn = require('../lib/database')
-const auth = require('../lib/auth')
+const conn = require('../lib/database/connection')
 
-async function findAllRegs() {
-  const regs = await conn('reg')
-    .select('id', 'created_time', 'data_json', 'status')
-    .map(row => {
+exports.getAllRegs = {
+  async fn() {
+    const regs = await conn('reg').map(row => {
       const data = JSON.parse(row.data_json)
 
       return {
         id: row.id,
-        created_time: row.created_time,
-        competition: data.mascotComp,
-        mascot_name: data.mascotName,
-        org_name: data.orgName,
-        status: row.status
+        createdTime: row.created_time,
+        status: row.status === null ? null : Boolean(row.status),
+        data: {
+          mascotComp: data.mascotComp,
+          mascotName: data.mascotName,
+          orgName: data.orgName
+        }
       }
     })
-
-  return regs
+    return regs
+  },
+  auth(user) {
+    return Boolean(user.staff)
+  }
 }
-findAllRegs.auth = auth.isStaff()
-exports.findAllRegs = findAllRegs
 
-async function findRegById(id) {
-  const [reg] = await conn('reg').where({id})
+exports.getReg = {
+  async fn(id) {
+    const [reg] = await conn('reg').where({id}).map(row => {
+      const reg = {
+        id: row.id,
+        createdTime: row.created_time,
+        logoImage: row.logo_file,
+        mascotImage: row.mascot_file,
+        data: JSON.parse(row.data_json)
+      }
 
-  return reg
+      Object.assign(reg, row.status === null ? {
+        status: null
+      } : {
+        status: Boolean(row.status),
+        reason: row.reason
+      })
+
+      return reg
+    })
+    return reg || null
+  },
+  auth(user) {
+    return Boolean(user.staff)
+  }
 }
-findRegById.auth = auth.isStaff()
-exports.findRegById = findRegById
 
-async function setRegStatus(id, status, reason) {
-  await conn('reg').where({id}).update({status, reason})
-
-  return true
+exports.setRegStatus = {
+  async fn(id, status, reason = null) {
+    await conn('reg').where({id}).update({status, reason})
+  },
+  auth(user) {
+    return Boolean(user.staff)
+  }
 }
-setRegStatus.auth = auth.isStaff()
-exports.setRegStatus = setRegStatus
