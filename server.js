@@ -1,6 +1,7 @@
 #!/usr/bin/env node
-const app = require('./lib/app')
-const logger = require('./lib/log')
+const createApp = require('./lib/app')
 
-const port = process.env.PORT
-app.listen(port, () => logger.info(`Server listening on port ${port}`))
+const app = createApp()
+
+const {PORT: port} = process.env
+app.listen(port, () => app.log.info(`Server listening on port ${port}`))

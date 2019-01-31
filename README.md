@@ -1,3 +1,3 @@
 # akashi
 
-Repositori untuk https://pingpong.nusaleague.com.
+Repositori untuk https://rpc.nusaleague.com.

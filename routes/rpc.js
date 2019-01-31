@@ -1,6 +1,11 @@
+const path = require('path')
+const {sync: glob} = require('glob')
 const {Router: router, json} = require('express')
-const createServer = require('../lib/rpc')
-const logger = require('../lib/log')
+const createServer = require('../lib/rpc/server')
+
+const methods = glob(path.resolve('./rpc/*.js'))
+  .map(path => require(path))
+  .reduce((methods, method) => Object.assign(methods, method), {})
 
 const route = router()
 
@@ -9,36 +14,35 @@ route.post('/rpc',
   (req, res, next) => {
     (async () => {
       const user = req.user || null
-
-      const server = createServer(user)
+      const server = createServer(methods, user)
 
       const request = req.body
       const response = await server.dispatchRequest(request)
-      logger.debug({user, request, response}, 'JSON-RPC call')
+      req.app.log.debug({user, request, response}, 'JSON-RPC dispatch successful')
 
       if (response === null) {
         res.sendStatus(204)
         return
       }
 
-      if (response.result || Array.isArray(response)) {
+      if (Array.isArray(response)) {
         res.json(response)
         return
       }
 
       if (response.error) {
-        res.status(getStatusCode(response.error.code)).json(response)
+        res.status(httpStatus(response.error.code)).json(response)
         return
       }
 
-      res.sendStatus(500)
+      res.json(response)
     })().catch(next)
   }
 )
 
 module.exports = route
 
-function getStatusCode(code) {
+function httpStatus(code) {
   switch (code) {
     case -32700: return 400
     case -32600: return 400

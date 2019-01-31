@@ -1,13 +1,15 @@
-const passport = require('passport')
-const {Router: router, urlencoded, json} = require('express')
-const logger = require('../lib/log')
+const {Router: createRouter, json} = require('express')
+const passport = require('../lib/passport')
+const {createComponentLogger} = require('../lib/log')
 
-const route = router()
+const authLog = createComponentLogger('auth')
+
+const route = createRouter()
 
 route.get('/auth', (req, res) => {
   const user = req.user || null
 
-  logger.debug({user}, 'Auth: get current user')
+  authLog.debug({user}, 'Get current user')
   res.json(user)
 })
 
@@ -16,34 +18,35 @@ route.get('/auth/logout', (req, res) => {
 
   req.logout()
 
-  logger.debug({user}, 'Auth: log out')
+  authLog.debug({user}, 'Log out')
   res.sendStatus(204)
 })
 
-route.post('/auth/login/form',
+route.post('/auth/login',
   json(),
-  urlencoded({extended: false}),
-  (req, res, next) => passport.authenticate('password', (err, auth) => {
+  (req, res, next) => passport.authenticate('local', (err, auth) => {
     if (err) {
-      logger.error('Auth: error in authentication strategy')
+      authLog.error('Error in authentication strategy')
       next(err)
       return
     }
 
     if (!auth) {
-      logger.debug('Auth: wrong username and/or password')
+      authLog.debug('Wrong username and/or password')
       res.sendStatus(401)
       return
     }
 
     req.login(auth, err => {
       if (err) {
-        logger.error('Auth: error in post-authentication login')
+        authLog.error('Error in post-authentication login')
         next(err)
         return
       }
 
-      logger.debug({auth, user: req.user}, 'Auth: authentication successful')
+      const {user} = req
+
+      authLog.debug({auth, user}, 'Authentication successful')
       res.sendStatus(200)
     })
   })(req, res, next)
