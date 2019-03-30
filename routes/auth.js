@@ -1,55 +1,70 @@
-const {Router: createRouter, json} = require('express')
+const path = require('path')
+const {Router: router, urlencoded} = require('express')
 const passport = require('../lib/passport')
-const {createComponentLogger} = require('../lib/log')
 
-const authLog = createComponentLogger('auth')
-
-const route = createRouter()
+const route = router()
 
 route.get('/auth', (req, res) => {
-  const user = req.user || null
+  const {user = null} = req
 
-  authLog.debug({user}, 'Get current user')
+  req.app.log.debug({user})
   res.json(user)
 })
 
 route.get('/auth/logout', (req, res) => {
-  const {user} = req
+  req.app.log.debug({user: req.user}, 'Log out')
 
   req.logout()
 
-  authLog.debug({user}, 'Log out')
   res.sendStatus(204)
 })
 
 route.post('/auth/login',
-  json(),
-  (req, res, next) => passport.authenticate('local', (err, auth) => {
+  urlencoded({extended: false}),
+  (req, res, next) => passport.authenticate('password', (err, user) => {
     if (err) {
-      authLog.error('Error in authentication strategy')
       next(err)
       return
     }
 
-    if (!auth) {
-      authLog.debug('Wrong username and/or password')
-      res.sendStatus(401)
+    if (!user) {
+      req.app.log.debug({strategy: 'password'}, 'Auth failed')
+      res.status(401).json({
+        type: 'AUTH_INVALID',
+        message: 'Invalid username or password'
+      })
       return
     }
 
-    req.login(auth, err => {
+    req.login(user, err => {
       if (err) {
-        authLog.error('Error in post-authentication login')
         next(err)
         return
       }
 
-      const {user} = req
-
-      authLog.debug({auth, user}, 'Authentication successful')
-      res.sendStatus(200)
+      next()
     })
-  })(req, res, next)
+  })(req, res, next),
+  (req, res) => {
+    req.app.log.debug({strategy: 'password', user: req.user}, 'Auth successful')
+    res.json(req.user)
+  }
 )
+
+for (const provider of ['facebook', 'twitter', 'google']) {
+  route.get(`/auth/${provider}`, passport.authenticate(provider))
+
+  route.get(`/auth/${provider}/callback`,
+    (req, res, next) => {
+      req.log.debug({provider}, 'Auth callback')
+      next()
+    },
+    passport.authenticate(provider),
+    (req, res) => {
+      req.app.log.debug({provider, user: req.user}, 'Auth successful')
+      res.sendFile(path.resolve('./assets/callback.html'))
+    }
+  )
+}
 
 module.exports = route

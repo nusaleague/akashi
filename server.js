@@ -1,7 +1,9 @@
 #!/usr/bin/env node
-const createApp = require('./lib/app')
 
-const app = createApp()
+// eslint-disable-next-line import/no-unassigned-import
+require('./lib/env')
 
-const {PORT: port} = process.env
-app.listen(port, () => app.log.info(`Server listening on port ${port}`))
+const app = require('./lib/app')
+const {PORT} = require('./lib/env')
+
+app.listen(PORT, () => app.log.info(`Server listening on port ${PORT}`))
