@@ -1,13 +1,14 @@
-const path = require('path')
-const {Router: router, urlencoded} = require('express')
+const {Router: router} = require('express')
 const passport = require('../lib/passport')
+
+const redirectMap = {
+  web: process.env.AUTH_CALLBACK_WEB
+}
 
 const route = router()
 
 route.get('/auth', (req, res) => {
   const {user = null} = req
-
-  req.app.log.debug({user})
   res.json(user)
 })
 
@@ -15,44 +16,28 @@ route.get('/auth/logout', (req, res) => {
   req.app.log.debug({user: req.user}, 'Log out')
 
   req.logout()
-
   res.sendStatus(204)
 })
 
-route.post('/auth/login',
-  urlencoded({extended: false}),
-  (req, res, next) => passport.authenticate('password', (err, user) => {
-    if (err) {
-      next(err)
-      return
-    }
+for (const provider of ['facebook', 'twitter', 'google']) {
+  route.get(`/auth/${provider}`,
+    (req, res, next) => {
+      const {next: redirectKey} = req.query
 
-    if (!user) {
-      req.app.log.debug({strategy: 'password'}, 'Auth failed')
-      res.status(401).json({
-        type: 'AUTH_INVALID',
-        message: 'Invalid username or password'
-      })
-      return
-    }
-
-    req.login(user, err => {
-      if (err) {
-        next(err)
+      if (!redirectMap[redirectKey]) {
+        req.app.log.debug({key: redirectKey}, 'Invalid auth redirect key (pre-auth)')
+        res.status(400).json({
+          type: 'INVALID_AUTH_REDIRECT',
+          message: 'Invalid authentication redirect'
+        })
         return
       }
 
+      req.session.authRedirect = redirectKey
       next()
-    })
-  })(req, res, next),
-  (req, res) => {
-    req.app.log.debug({strategy: 'password', user: req.user}, 'Auth successful')
-    res.json(req.user)
-  }
-)
-
-for (const provider of ['facebook', 'twitter', 'google']) {
-  route.get(`/auth/${provider}`, passport.authenticate(provider))
+    },
+    passport.authenticate(provider)
+  )
 
   route.get(`/auth/${provider}/callback`,
     (req, res, next) => {
@@ -62,7 +47,21 @@ for (const provider of ['facebook', 'twitter', 'google']) {
     passport.authenticate(provider),
     (req, res) => {
       req.app.log.debug({provider, user: req.user}, 'Auth successful')
-      res.sendFile(path.resolve('./assets/callback.html'))
+
+      const redirectKey = req.session.authRedirect
+      delete req.session.authRedirect
+
+      const url = redirectMap[redirectKey]
+      if (!url) {
+        req.app.log.debug({key: redirectKey}, 'Invalid auth redirect key (post-auth)')
+        res.status(400).json({
+          type: 'INVALID_AUTH_REDIRECT',
+          message: 'Invalid authentication redirect'
+        })
+        return
+      }
+
+      res.redirect(url)
     }
   )
 }

@@ -2,16 +2,19 @@ const _ = require('lodash')
 const moment = require('moment')
 const {default: ow} = require('ow')
 const conn = require('../lib/database/connection')
-const err = require('../lib/rpc/error')
-const {asSelf} = require('../lib/rpc/auth')
+const err = require('../lib/error')
 
 exports.getFixture = {
-  auth: asSelf(),
-  validateArgs(userId, fixtureSlug) {
-    ow(userId, ow.number.uint32)
-    ow(fixtureSlug, ow.string)
+  validateArgs(fixtureSlug) {
+    try {
+      ow(fixtureSlug, ow.string.nonEmpty)
+    } catch (error) {
+      return false
+    }
+
+    return true
   },
-  async fn(userId, fixtureSlug) {
+  async fn(fixtureSlug) {
     const [fixture] = await conn('vote_fixture')
       .where('slug', fixtureSlug)
 
@@ -38,12 +41,18 @@ exports.getFixture = {
     // eslint-disable-next-line camelcase
     data.vote_match = await conn('vote_match')
       .where('fixture_id', fixture.id)
-      .select(['id', 'division'])
+      .select([
+        'id',
+        'division'
+      ])
 
     // eslint-disable-next-line camelcase
     data.vote_match_mascot = await conn('vote_match_mascot')
       .whereIn('match_id', _.map(data.vote_match, 'id'))
-      .select(['match_id', 'mascot_id'])
+      .select([
+        'match_id',
+        'mascot_id'
+      ])
 
     data.mascot = await conn('mascot')
       .whereIn('id', _.map(data.vote_match_mascot, 'mascot_id'))
@@ -53,38 +62,78 @@ exports.getFixture = {
       .whereIn('id', _.uniq(_.map(data.mascot, 'org_id')))
       .select(['id', 'slug', 'short_name'])
 
+    return data
+  }
+}
+
+exports.getResponse = {
+  auth(user, userId) {
+    return user.id === userId
+  },
+  validateArgs(userId, fixtureId) {
+    try {
+      ow(userId, ow.number.positive.uint32)
+      ow(fixtureId, ow.number.positive.uint32)
+    } catch (error) {
+      return false
+    }
+
+    return true
+  },
+  async fn(userId, fixtureId) {
+    const [response] = await conn('vote_response')
+      .where('user_id', userId).andWhere('fixture_id', fixtureId)
+
+    if (!response) {
+      return null
+    }
+
+    const data = {}
+
     // eslint-disable-next-line camelcase
-    data.vote_response = await conn('vote_response')
-      .where('fixture_id', fixture.id).andWhere('user_id', userId)
-      .select(['id', 'fixture_id', 'user_id', 'created_time', 'comment'])
+    data.vote_response = _.pick(response, ['id', 'fixture_id', 'user_id', 'created_time', 'comment'])
+
+    // eslint-disable-next-line camelcase
+    data.vote_response_match = await conn('vote_response_match')
+      .where('response_id', response.id)
+      .select(['response_id', 'match_id', 'mascot_id'])
 
     return data
   }
 }
 
 exports.submitResponse = {
-  auth: asSelf(),
+  auth(user, userId) {
+    return user.id === userId
+  },
   validateArgs(userId, fixtureId, submitData) {
-    ow(userId, ow.number.uint32)
-    ow(fixtureId, ow.number.uint32)
-    ow(submitData, ow.object.exactShape({
-      comment: ow.optional.any(ow.string.nonEmpty, ow.nullOrUndefined),
-      responses: ow.array.ofType(ow.object.exactShape({
-        matchId: ow.number.uint32,
-        mascotId: ow.number.uint32
+    try {
+      ow(userId, ow.number.positive.uint32)
+      ow(fixtureId, ow.number.positive.uint32)
+      ow(submitData, ow.object.exactShape({
+        comment: ow.optional.any(ow.nullOrUndefined, ow.string.nonEmpty.maxLength(2000)),
+        responses: ow.array.ofType(ow.object.exactShape({
+          matchId: ow.number.positive.uint32,
+          mascotId: ow.number.positive.uint32
+        }))
       }))
-    }))
+    } catch (error) {
+      return false
+    }
+
+    return true
   },
   async fn(userId, fixtureId, submitData) {
-    const [fixture] = await conn('vote_fixture').where('id', fixtureId)
+    const [fixture] = await conn('vote_fixture')
+      .where('id', fixtureId)
 
     if (!fixture || !getFixtureStatus(fixture)) {
-      throw new err.IllegalOperationError()
+      throw new err.IllegalOperationError('Invalid fixture')
     }
 
     const matchMascots = await conn('vote_match_mascot')
       .whereIn('match_id', function () {
-        this('vote_match').where('fixture_id', fixtureId).select('id')
+        this.from('vote_match').where('fixture_id', fixtureId).select('id')
       })
       .select('match_id', 'mascot_id')
 
@@ -94,13 +143,13 @@ exports.submitResponse = {
     )
 
     if (submitData.responses.length !== Object.keys(matchMascotMaps).length) {
-      throw new err.InvalidInputError()
+      throw new err.InvalidInputError('Invalid submit match data length')
     }
 
     for (const {matchId, mascotId} of submitData.responses) {
       const {[matchId]: map} = matchMascotMaps
       if (!map || !map.includes(mascotId)) {
-        throw new err.InvalidInputError()
+        throw new err.InvalidInputError('Invalid submit match data values')
       }
     }
 
@@ -116,13 +165,14 @@ exports.submitResponse = {
         })
       } catch (error) {
         if (error.code === 'ER_DUP_ENTRY') {
-          throw new err.InvalidInputError()
+          throw new err.InvalidInputError('Response already exists')
         }
 
         throw error
       }
 
       const [responseId] = result
+
       await trx('vote_response_match').insert(
         submitData.responses.map(response => ({
           /* eslint-disable camelcase */

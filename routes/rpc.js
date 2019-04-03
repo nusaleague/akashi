@@ -1,10 +1,23 @@
 const path = require('path')
 const {Router: router, json} = require('express')
 const {sync: glob} = require('glob')
-const createServer = require('../lib/rpc/server')
-const {mapJSONRPCCode} = require('../lib/util')
+const Server = require('@tkesgar/chihiro/lib/server')
+const err = require('../lib/error')
+const logger = require('../lib/log')
 
-const methods = createMethods(path.resolve('./rpc'))
+const log = logger.child({sub: 'jsonrpc'})
+
+const methods = glob(path.resolve('./rpc/*.js'))
+  .map(methodsPath => require(methodsPath))
+  .reduce((methods, newMethods) => {
+    for (const methodName of Object.keys(newMethods)) {
+      if (methods[methodName]) {
+        throw new Error(`Duplicate method: ${methodName}`)
+      }
+    }
+
+    return Object.assign(methods, newMethods)
+  }, {})
 
 const route = router()
 
@@ -12,26 +25,13 @@ route.post('/rpc',
   json(),
   (req, res, next) => {
     (async () => {
-      const server = createServer(methods, req.user)
+      const {body: request, user} = req
 
-      const {body: request} = req
+      const server = createServer(methods, user)
       const response = await server.dispatchRequest(request)
-
-      req.app.log.debug({request, response}, 'JSON-RPC call completed')
 
       if (response === null) {
         res.sendStatus(204)
-        return
-      }
-
-      if (Array.isArray(response)) {
-        res.json(response)
-        return
-      }
-
-      if (response.error) {
-        const statusCode = mapJSONRPCCode(response.error.code)
-        res.status(statusCode).json(response)
         return
       }
 
@@ -42,16 +42,58 @@ route.post('/rpc',
 
 module.exports = route
 
-function createMethods(dir) {
-  return glob(path.resolve(dir, './*.js'))
-    .map(methodsPath => require(methodsPath))
-    .reduce((methods, newMethods) => {
-      for (const methodName of Object.keys(newMethods)) {
-        if (methods[methodName]) {
-          throw new Error(`Duplicate method name: ${methodName}`)
-        }
+function createServer(methods, user) {
+  return new Server(async (method, params) => {
+    const methodInfo = methods[method]
+    if (!methodInfo) {
+      throw new err.MethodNotFoundError()
+    }
+
+    const {mapParams, validateArgs, auth, fn} = methodInfo
+
+    const args = (() => {
+      if (typeof params === 'undefined') {
+        return []
       }
 
-      return Object.assign(methods, newMethods)
-    }, {})
+      if (Array.isArray(params)) {
+        return params
+      }
+
+      if (!mapParams) {
+        throw new err.InvalidParamsError()
+      }
+
+      return mapParams(params)
+    })()
+
+    if (validateArgs && !(await validateArgs(...args))) {
+      throw new err.InvalidParamsError()
+    }
+
+    if (auth) {
+      if (!user) {
+        throw new err.AuthRequiredError()
+      }
+
+      if (!(await auth(user, ...args))) {
+        throw new err.UnauthorizedError()
+      }
+    }
+
+    let result
+    try {
+      result = await fn(...args)
+    } catch (error) {
+      const {message, code} = error
+      if (typeof message === 'string' && typeof code === 'number') {
+        throw error
+      }
+
+      log.error({err: error}, 'Function call returned a non-standard error')
+      throw new err.InternalMethodError()
+    }
+
+    return result
+  })
 }
