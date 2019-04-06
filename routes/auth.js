@@ -1,5 +1,6 @@
-const {Router: router} = require('express')
+const {Router: router, urlencoded} = require('express')
 const passport = require('../lib/passport')
+const createRateLimit = require('../lib/rate-limit')
 
 const redirectMap = {
   web: process.env.AUTH_CALLBACK_WEB
@@ -7,29 +8,56 @@ const redirectMap = {
 
 const route = router()
 
-route.get('/auth', (req, res) => {
-  const {user = null} = req
-  res.json(user)
-})
+route.get('/auth',
+  createRateLimit('rl-login:', 60), // 30 req/menit
+  (req, res) => {
+    res.json(req.user || null)
+  }
+)
 
-route.get('/auth/logout', (req, res) => {
-  req.app.log.debug({user: req.user}, 'Log out')
+route.get('/auth/logout',
+  (req, res) => {
+    req.app.log.debug({user: req.user}, 'Log out')
 
-  req.logout()
-  res.sendStatus(204)
-})
+    req.logout()
+    res.sendStatus(204)
+  }
+)
+
+route.post('/auth/login',
+  createRateLimit('rl-login:', 30), // 30 req/menit
+  urlencoded({extended: false}),
+  (req, res, next) => passport.authenticate('password', (err, user) => {
+    if (err) {
+      next(err)
+      return
+    }
+
+    if (!user) {
+      res.sendStatus(401)
+      return
+    }
+
+    req.login(user, err => {
+      if (err) {
+        next(err)
+        return
+      }
+
+      res.json(req.user)
+    })
+  })(req, res, next)
+)
 
 for (const provider of ['facebook', 'twitter', 'google']) {
   route.get(`/auth/${provider}`,
+    createRateLimit('rl-login:', 30), // 30 req/menit
     (req, res, next) => {
       const {next: redirectKey} = req.query
 
       if (!redirectMap[redirectKey]) {
         req.app.log.debug({key: redirectKey}, 'Invalid auth redirect key (pre-auth)')
-        res.status(400).json({
-          type: 'INVALID_AUTH_REDIRECT',
-          message: 'Invalid authentication redirect'
-        })
+        res.sendStatus(400)
         return
       }
 
@@ -54,10 +82,7 @@ for (const provider of ['facebook', 'twitter', 'google']) {
       const url = redirectMap[redirectKey]
       if (!url) {
         req.app.log.debug({key: redirectKey}, 'Invalid auth redirect key (post-auth)')
-        res.status(400).json({
-          type: 'INVALID_AUTH_REDIRECT',
-          message: 'Invalid authentication redirect'
-        })
+        res.sendStatus(400)
         return
       }
 

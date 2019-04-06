@@ -5,6 +5,7 @@ const conn = require('../lib/database/connection')
 const err = require('../lib/error')
 
 exports.getFixture = {
+  auth: true,
   validateArgs(fixtureSlug) {
     try {
       ow(fixtureSlug, ow.string.nonEmpty)

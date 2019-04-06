@@ -4,6 +4,7 @@ const {sync: glob} = require('glob')
 const Server = require('@tkesgar/chihiro/lib/server')
 const err = require('../lib/error')
 const logger = require('../lib/log')
+const createRateLimit = require('../lib/rate-limit')
 
 const log = logger.child({sub: 'jsonrpc'})
 
@@ -22,6 +23,7 @@ const methods = glob(path.resolve('./rpc/*.js'))
 const route = router()
 
 route.post('/rpc',
+  createRateLimit('rl-rpc:', 120), // 120 req/menit
   json(),
   (req, res, next) => {
     (async () => {
@@ -72,13 +74,18 @@ function createServer(methods, user) {
     }
 
     if (auth) {
-      if (!user) {
-        throw new err.AuthRequiredError()
-      }
+      if (auth !== true) {
+        if (!user) {
+          throw new err.AuthRequiredError()
+        }
 
-      if (!(await auth(user, ...args))) {
-        throw new err.UnauthorizedError()
+        if (!(await auth(user, ...args))) {
+          throw new err.UnauthorizedError()
+        }
       }
+    } else {
+      log.error({method}, '\'auth\' property required')
+      throw new Error('\'auth\' property required')
     }
 
     let result
