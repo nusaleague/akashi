@@ -7,13 +7,7 @@ const err = require('../lib/error')
 exports.getFixture = {
   auth: true,
   validateArgs(fixtureSlug) {
-    try {
-      ow(fixtureSlug, ow.string.nonEmpty)
-    } catch (error) {
-      return false
-    }
-
-    return true
+    ow(fixtureSlug, ow.string.nonEmpty)
   },
   async fn(fixtureSlug) {
     const [fixture] = await conn('vote_fixture')
@@ -72,14 +66,8 @@ exports.getResponse = {
     return user.id === userId
   },
   validateArgs(userId, fixtureId) {
-    try {
-      ow(userId, ow.number.positive.uint32)
-      ow(fixtureId, ow.number.positive.uint32)
-    } catch (error) {
-      return false
-    }
-
-    return true
+    ow(userId, ow.number.positive.uint32)
+    ow(fixtureId, ow.number.positive.uint32)
   },
   async fn(userId, fixtureId) {
     const [response] = await conn('vote_response')
@@ -108,21 +96,15 @@ exports.submitResponse = {
     return user.id === userId
   },
   validateArgs(userId, fixtureId, submitData) {
-    try {
-      ow(userId, ow.number.positive.uint32)
-      ow(fixtureId, ow.number.positive.uint32)
-      ow(submitData, ow.object.exactShape({
-        comment: ow.optional.any(ow.nullOrUndefined, ow.string.nonEmpty.maxLength(2000)),
-        responses: ow.array.ofType(ow.object.exactShape({
-          matchId: ow.number.positive.uint32,
-          mascotId: ow.number.positive.uint32
-        }))
+    ow(userId, ow.number.positive.uint32)
+    ow(fixtureId, ow.number.positive.uint32)
+    ow(submitData, ow.object.exactShape({
+      comment: ow.optional.any(ow.nullOrUndefined, ow.string.nonEmpty.maxLength(2000)),
+      responses: ow.array.ofType(ow.object.exactShape({
+        matchId: ow.number.positive.uint32,
+        mascotId: ow.number.positive.uint32
       }))
-    } catch (error) {
-      return false
-    }
-
-    return true
+    }))
   },
   async fn(userId, fixtureId, submitData) {
     const [fixture] = await conn('vote_fixture')

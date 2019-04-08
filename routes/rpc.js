@@ -69,8 +69,12 @@ function createServer(methods, user) {
       return mapParams(params)
     })()
 
-    if (validateArgs && !(await validateArgs(...args))) {
-      throw new err.InvalidParamsError()
+    if (validateArgs) {
+      try {
+        await validateArgs(...args)
+      } catch {
+        throw new err.InvalidParamsError()
+      }
     }
 
     if (auth) {
