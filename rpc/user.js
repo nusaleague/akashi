@@ -115,6 +115,28 @@ exports.self_setUserEmail = {
   }
 }
 
+exports.findUsers = {
+  auth(user) {
+    return user.staff && user.staff.roles.includes('admin')
+  },
+  validateArgs(key) {
+    try {
+      ow(key, ow.string.nonEmpty)
+    } catch (error) {
+      return false
+    }
+
+    return true
+  },
+  async fn(key) {
+    const users = await conn('user')
+      .where('slug', 'like', `%${key}%`)
+      .orWhere('display_name', 'like', `%${key}%`)
+
+    return users
+  }
+}
+
 exports.getUser = {
   auth(user) {
     return user.staff && user.staff.roles.includes('admin')
@@ -127,6 +149,10 @@ exports.getUser = {
     }
 
     return true
+  },
+  async fn(userId) {
+    const [user] = await conn('user').where('id', userId)
+    return user || null
   }
 }
 
