@@ -24,10 +24,10 @@ route.get('/auth/logout',
   }
 )
 
-route.post('/auth/login',
+route.post('/auth/staff',
   createRateLimit('rl-login:', 30), // 30 req/menit
   urlencoded({extended: false}),
-  (req, res, next) => passport.authenticate('password', (err, user) => {
+  (req, res, next) => passport.authenticate('staff', (err, user) => {
     if (err) {
       next(err)
       return
@@ -44,7 +44,7 @@ route.post('/auth/login',
         return
       }
 
-      res.json(req.user)
+      res.sendStatus(200)
     })
   })(req, res, next)
 )
