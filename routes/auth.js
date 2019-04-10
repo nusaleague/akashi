@@ -1,24 +1,18 @@
 const {Router: router, urlencoded} = require('express')
 const passport = require('../lib/passport')
 
-const redirectMap = {
+const REDIRECT_MAP = {
   web: process.env.AUTH_CALLBACK_WEB
 }
 
 const route = router()
 
-route.get('/auth', (req, res) => {
-  res.json(req.user || null)
+route.get('/auth', (req, res) => res.json(req.user || null))
+
+route.get('/auth/logout', (req, res) => {
+  req.logout()
+  res.sendStatus(204)
 })
-
-route.get('/auth/logout',
-  (req, res) => {
-    req.app.log.debug({user: req.user}, 'Log out')
-
-    req.logout()
-    res.sendStatus(204)
-  }
-)
 
 route.post('/auth/staff',
   urlencoded({extended: false}),
@@ -39,6 +33,7 @@ route.post('/auth/staff',
         return
       }
 
+      req.app.log.debug({auth: 'staff', user: req.user}, 'Auth successful')
       res.sendStatus(200)
     })
   })(req, res, next)
@@ -47,15 +42,16 @@ route.post('/auth/staff',
 for (const provider of ['facebook', 'twitter', 'google']) {
   route.get(`/auth/${provider}`,
     (req, res, next) => {
-      const {next: redirectKey} = req.query
+      const key = req.query.next
 
-      if (!redirectMap[redirectKey]) {
-        req.app.log.debug({key: redirectKey}, 'Invalid auth redirect key (pre-auth)')
+      const redirect = REDIRECT_MAP[key]
+      if (!redirect) {
+        req.app.log.debug({auth: provider, key}, 'Invalid auth redirect key (pre-auth)')
         res.sendStatus(400)
         return
       }
 
-      req.session.authRedirect = redirectKey
+      req.session.authRedirect = redirect
       next()
     },
     passport.authenticate(provider)
@@ -63,24 +59,17 @@ for (const provider of ['facebook', 'twitter', 'google']) {
 
   route.get(`/auth/${provider}/callback`,
     (req, res, next) => {
-      req.log.debug({provider}, 'Auth callback')
+      req.log.debug({auth: provider}, 'Callback')
       next()
     },
     passport.authenticate(provider),
     (req, res) => {
-      req.app.log.debug({provider, user: req.user}, 'Auth successful')
+      req.app.log.debug({auth: provider, user: req.user}, 'Auth successful')
 
-      const redirectKey = req.session.authRedirect
+      const redirect = req.session.authRedirect
       delete req.session.authRedirect
 
-      const url = redirectMap[redirectKey]
-      if (!url) {
-        req.app.log.debug({key: redirectKey}, 'Invalid auth redirect key (post-auth)')
-        res.sendStatus(400)
-        return
-      }
-
-      res.redirect(url)
+      res.redirect(redirect)
     }
   )
 }

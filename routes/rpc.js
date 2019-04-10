@@ -90,19 +90,16 @@ function createServer(methods, user) {
       throw new Error('\'auth\' property required')
     }
 
-    let result
     try {
-      result = await fn(...args)
+      const result = await fn(...args)
+      return result
     } catch (error) {
-      const {message, code} = error
-      if (typeof message === 'string' && typeof code === 'number') {
+      if (typeof error.message === 'string' && typeof error.code === 'number') {
         throw error
       }
 
       log.error({err: error}, 'Function call returned a non-standard error')
       throw new err.InternalMethodError()
     }
-
-    return result
   })
 }
