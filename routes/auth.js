@@ -1,6 +1,5 @@
 const {Router: router, urlencoded} = require('express')
 const passport = require('../lib/passport')
-const createRateLimit = require('../lib/rate-limit')
 
 const redirectMap = {
   web: process.env.AUTH_CALLBACK_WEB
@@ -8,12 +7,9 @@ const redirectMap = {
 
 const route = router()
 
-route.get('/auth',
-  createRateLimit('rl-login:', 60), // 30 req/menit
-  (req, res) => {
-    res.json(req.user || null)
-  }
-)
+route.get('/auth', (req, res) => {
+  res.json(req.user || null)
+})
 
 route.get('/auth/logout',
   (req, res) => {
@@ -25,7 +21,6 @@ route.get('/auth/logout',
 )
 
 route.post('/auth/staff',
-  createRateLimit('rl-login:', 30), // 30 req/menit
   urlencoded({extended: false}),
   (req, res, next) => passport.authenticate('staff', (err, user) => {
     if (err) {
@@ -51,7 +46,6 @@ route.post('/auth/staff',
 
 for (const provider of ['facebook', 'twitter', 'google']) {
   route.get(`/auth/${provider}`,
-    createRateLimit('rl-login:', 30), // 30 req/menit
     (req, res, next) => {
       const {next: redirectKey} = req.query
 

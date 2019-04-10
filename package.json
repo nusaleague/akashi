@@ -12,7 +12,7 @@
     "node": ">=10"
   },
   "dependencies": {
-    "@keyv/redis": "^1.3.8",
+    "@sindresorhus/is": "^0.15.0",
     "@tkesgar/chihiro": "^1.0.0",
     "@tkesgar/futaba": "^1.0.0",
     "@tkesgar/haru": "^2.0.1",
@@ -22,10 +22,8 @@
     "cors": "^2.8.5",
     "dotenv": "^7.0.0",
     "express": "^4.16.4",
-    "express-rate-limit": "^3.4.0",
     "glob": "^7.1.3",
     "helmet": "^3.16.0",
-    "keyv": "^3.1.0",
     "knex": "^0.16.3",
     "lodash": "^4.17.11",
     "moment": "^2.24.0",
@@ -36,7 +34,6 @@
     "passport-google-oauth20": "^2.0.0",
     "passport-local": "^1.0.0",
     "passport-twitter": "^1.0.4",
-    "rate-limit-redis": "^1.6.0",
     "redis": "^2.8.0"
   },
   "devDependencies": {
