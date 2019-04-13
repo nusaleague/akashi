@@ -1,7 +1,7 @@
 const path = require('path')
+const Server = require('@tkesgar/chihiro/lib/server')
 const {Router: router, json} = require('express')
 const {sync: glob} = require('glob')
-const Server = require('@tkesgar/chihiro/lib/server')
 const err = require('../lib/error')
 const logger = require('../lib/log')
 

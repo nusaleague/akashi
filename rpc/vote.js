@@ -1,7 +1,7 @@
 const _ = require('lodash')
 const moment = require('moment')
 const {default: ow} = require('ow')
-const conn = require('../lib/database/connection')
+const conn = require('../lib/database')
 const err = require('../lib/error')
 
 exports.getFixture = {

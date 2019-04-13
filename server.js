@@ -4,6 +4,6 @@
 require('./lib/env')
 
 const app = require('./lib/app')
-const {PORT} = require('./lib/env')
 
-app.listen(PORT, () => app.log.info(`Server listening on port ${PORT}`))
+const {PORT: port} = process.env
+app.listen(port, () => app.log.info(`Server listening on port ${port}`))

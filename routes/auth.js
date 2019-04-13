@@ -1,13 +1,11 @@
 const {Router: router, urlencoded} = require('express')
 const passport = require('../lib/passport')
 
-const REDIRECT_MAP = {
-  web: process.env.AUTH_CALLBACK_WEB
-}
-
 const route = router()
 
-route.get('/auth', (req, res) => res.json(req.user || null))
+route.get('/auth', (req, res) => {
+  res.json(req.user || null)
+})
 
 route.get('/auth/logout', (req, res) => {
   req.logout()
@@ -42,16 +40,7 @@ route.post('/auth/staff',
 for (const provider of ['facebook', 'twitter', 'google']) {
   route.get(`/auth/${provider}`,
     (req, res, next) => {
-      const key = req.query.next
-
-      const redirect = REDIRECT_MAP[key]
-      if (!redirect) {
-        req.app.log.debug({auth: provider, key}, 'Invalid auth redirect key (pre-auth)')
-        res.sendStatus(400)
-        return
-      }
-
-      req.session.authRedirect = redirect
+      req.session.next = req.query.next
       next()
     },
     passport.authenticate(provider)
@@ -59,17 +48,23 @@ for (const provider of ['facebook', 'twitter', 'google']) {
 
   route.get(`/auth/${provider}/callback`,
     (req, res, next) => {
-      req.log.debug({auth: provider}, 'Callback')
+      req.log.debug({auth: provider}, 'Auth callback')
       next()
     },
     passport.authenticate(provider),
     (req, res) => {
       req.app.log.debug({auth: provider, user: req.user}, 'Auth successful')
 
-      const redirect = req.session.authRedirect
-      delete req.session.authRedirect
+      const {next} = req.session
+      delete req.session.next
 
-      res.redirect(redirect)
+      switch (next) {
+        case 'redirect-web':
+          res.redirect(process.env.AUTH_CALLBACK_WEB)
+          break
+        default:
+          res.sendFile('./assets/auth-callback.html')
+      }
     }
   )
 }
