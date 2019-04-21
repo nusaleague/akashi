@@ -1,4 +1,4 @@
-const {Router: router, urlencoded} = require('express')
+const {Router: router} = require('express')
 const passport = require('../lib/passport')
 
 const route = router()
@@ -11,31 +11,6 @@ route.get('/auth/logout', (req, res) => {
   req.logout()
   res.sendStatus(204)
 })
-
-route.post('/auth/staff',
-  urlencoded({extended: false}),
-  (req, res, next) => passport.authenticate('staff', (err, user) => {
-    if (err) {
-      next(err)
-      return
-    }
-
-    if (!user) {
-      res.sendStatus(401)
-      return
-    }
-
-    req.login(user, err => {
-      if (err) {
-        next(err)
-        return
-      }
-
-      req.app.log.debug({auth: 'staff', user: req.user}, 'Auth successful')
-      res.sendStatus(200)
-    })
-  })(req, res, next)
-)
 
 for (const provider of ['facebook', 'twitter', 'google']) {
   route.get(`/auth/${provider}`,
@@ -59,7 +34,7 @@ for (const provider of ['facebook', 'twitter', 'google']) {
       delete req.session.next
 
       switch (next) {
-        case 'redirect-web':
+        case 'web':
           res.redirect(process.env.AUTH_CALLBACK_WEB)
           break
         default:
