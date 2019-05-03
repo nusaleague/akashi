@@ -1,105 +1,35 @@
-const path = require('path')
-const Server = require('@tkesgar/chihiro/lib/server')
-const {Router: router, json} = require('express')
-const {sync: glob} = require('glob')
-const err = require('../lib/error')
-const logger = require('../lib/log')
+const {Router: router, json} = require('express');
+const {serviceManager} = require('../lib/service');
 
-const log = logger.child({sub: 'jsonrpc'})
+module.exports = () => {
+	const rpc = serviceManager.get('rpc');
 
-const methods = glob(path.resolve('./rpc/*.js'))
-  .map(methodsPath => require(methodsPath))
-  .reduce((methods, newMethods) => {
-    for (const methodName of Object.keys(newMethods)) {
-      if (methods[methodName]) {
-        throw new Error(`Duplicate method: ${methodName}`)
-      }
-    }
+	const route = router();
 
-    return Object.assign(methods, newMethods)
-  }, {})
+	route.post('/rpc',
+		(req, res, next) => json()(req, res, err => {
+			if (err) {
+				next(Object.assign(err, {__isFromJSONRPC: true}));
+				return;
+			}
 
-const route = router()
+			next();
+		}),
+		(req, res, next) => {
+			(async () => {
+				const {body: request, user} = req;
 
-route.post('/rpc',
-  json(),
-  (req, res, next) => {
-    (async () => {
-      const {body: request, user} = req
+				const response = await rpc(request, user);
 
-      const server = createServer(methods, user)
-      const response = await server.dispatchRequest(request)
+				if (response === null) {
+					res.sendStatus(204);
+					return;
+				}
 
-      if (response === null) {
-        res.sendStatus(204)
-        return
-      }
+				res.json(response);
+			})().catch(next);
+		}
+	);
 
-      res.json(response)
-    })().catch(next)
-  }
-)
-
-module.exports = route
-
-function createServer(methods, user) {
-  return new Server(async (method, params) => {
-    const methodInfo = methods[method]
-    if (!methodInfo) {
-      throw new err.MethodNotFoundError()
-    }
-
-    const {mapParams, validateArgs, auth, fn} = methodInfo
-
-    const args = (() => {
-      if (typeof params === 'undefined') {
-        return []
-      }
-
-      if (Array.isArray(params)) {
-        return params
-      }
-
-      if (!mapParams) {
-        throw new err.InvalidParamsError()
-      }
-
-      return mapParams(params)
-    })()
-
-    if (validateArgs) {
-      try {
-        await validateArgs(...args)
-      } catch {
-        throw new err.InvalidParamsError()
-      }
-    }
-
-    if (auth) {
-      if (auth !== true) {
-        if (!user) {
-          throw new err.AuthRequiredError()
-        }
-
-        if (!(await auth(user, ...args))) {
-          throw new err.UnauthorizedError()
-        }
-      }
-    } else {
-      log.error({method}, '\'auth\' property required')
-      throw new Error('\'auth\' property required')
-    }
-
-    try {
-      const result = await fn(...args)
-      return result
-    } catch (error) {
-      if (typeof error.message === 'string' && typeof error.code === 'number') {
-        throw error
-      }
-
-      log.error({err: error}, 'Function call returned a non-standard error')
-      throw new err.InternalMethodError()
-    }
-  })
-}
+	return route;
+};
