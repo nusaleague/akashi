@@ -16,11 +16,11 @@
     "@tkesgar/haru": "^2.0.2",
     "cookie-session": "^2.0.0-beta.3",
     "cors": "^2.8.5",
-    "dotenv": "^7.0.0",
+    "dotenv": "^8.0.0",
     "ejs": "^2.6.1",
     "express": "^4.16.4",
     "glob": "^7.1.3",
-    "helmet": "^3.16.0",
+    "helmet": "^3.18.0",
     "knex": "^0.16.5",
     "lodash": "^4.17.11",
     "moment": "^2.24.0",
@@ -33,12 +33,12 @@
     "passport-local": "^1.0.0",
     "passport-twitter": "^1.0.4",
     "pino": "^5.12.3",
-    "pino-pretty": "^2.6.1"
+    "pino-pretty": "^3.0.0"
   },
   "devDependencies": {
-    "husky": "^2.1.0",
-    "jest": "^24.7.1",
-    "nodemon": "^1.18.11",
+    "husky": "^2.2.0",
+    "jest": "^24.8.0",
+    "nodemon": "^1.19.0",
     "xo": "^0.24.0"
   },
   "husky": {
