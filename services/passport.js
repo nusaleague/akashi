@@ -31,6 +31,7 @@ module.exports = {
 
 		passport.use('local', serviceManager.get('passport-strategy/local'));
 		passport.use('facebook', serviceManager.get('passport-strategy/facebook'));
+		passport.use('google', serviceManager.get('passport-strategy/google'));
 
 		return passport;
 	}
