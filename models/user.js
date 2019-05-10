@@ -83,7 +83,7 @@ module.exports = {
 
 			async isStaff() {
 				const row = await this.getRow();
-				return row.name.startsWith('#');
+				return row.name && row.name.startsWith('#');
 			}
 
 			async testPassword(password) {
