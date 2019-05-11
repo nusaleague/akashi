@@ -11,6 +11,6 @@ module.exports = ({app, env: {SECRET: secret, dev}}) => {
 	app.use(cookieSession({
 		secret,
 		maxAge: 14 * 24 * 3600 * 1000,
-		sameSite: true
+		sameSite: 'lax'
 	}));
 };
