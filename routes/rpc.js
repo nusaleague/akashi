@@ -3,6 +3,7 @@ const {serviceManager} = require('../lib/service');
 
 module.exports = () => {
 	const rpc = serviceManager.get('rpc');
+	const log = serviceManager.get('log');
 
 	const route = router();
 
@@ -20,6 +21,8 @@ module.exports = () => {
 				const {body: request, user} = req;
 
 				const response = await rpc(request, user);
+
+				log.debug({request, user}, 'JSON-RPC call dispatched');
 
 				if (response === null) {
 					res.sendStatus(204);

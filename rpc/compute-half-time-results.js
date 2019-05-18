@@ -21,7 +21,7 @@ module.exports = {
 					})
 					.andWhere('created_time', '<=', db.raw('DATE_ADD(end_time, INTERVAL TIME_TO_SEC(TIMEDIFF(start_time, end_time))/2 SECOND)'));
 			})
-			.groupBy('mascot_id')
+			.groupBy(['match_id', 'mascot_id'])
 			.select(['match_id', 'mascot_id'])
 			.count('mascot_id as vote');
 
@@ -34,8 +34,8 @@ module.exports = {
 
 			matchResultRow.score = (p => {
 				switch (Math.sign(p - 50)) {
-					case 1: return Math.floor(p);
-					case -1: return Math.ceil(p);
+					case 1: return 51;
+					case -1: return 49;
 					default: return p;
 				}
 			})((matchResultRow.vote / sumVote) * 100);

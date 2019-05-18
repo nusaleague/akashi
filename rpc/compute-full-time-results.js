@@ -20,7 +20,7 @@ module.exports = {
 							.where('comp', comp).andWhere('season', year).andWhere('stage', stage); // TODO Ganti kolom season jadi year
 					});
 			})
-			.groupBy('mascot_id')
+			.groupBy(['match_id', 'mascot_id'])
 			.select(['match_id', 'mascot_id'])
 			.count('mascot_id as vote');
 

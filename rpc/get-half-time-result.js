@@ -1,10 +1,7 @@
 const {serviceManager} = require('../lib/service');
 
 module.exports = {
-	name: 'getMatchData',
-	auth(user) {
-		return user.staff;
-	},
+	name: 'getHalfTimeResult',
 	async fn(comp, year, stage) {
 		const db = serviceManager.get('database');
 
@@ -20,7 +17,13 @@ module.exports = {
 					.from('match')
 					.where('season_id', seasonId).andWhere('stage', stage);
 			})
-			.select(['match_id', 'mascot_id', 'half_score', 'full_score']);
+			.select(['match_id', 'mascot_id', 'half_score']);
+
+		for (const matchMascot of data.matchMascot) {
+			if (matchMascot.half_score === null) {
+				return null;
+			}
+		}
 
 		data.mascotSeasonRows = await db('mascot_season')
 			.where('season_id', seasonId)
