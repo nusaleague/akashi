@@ -37,7 +37,7 @@ module.exports = {
 								// eslint-disable-next-line camelcase
 								info_json: JSON.stringify(socialInfo)
 							});
-					} catch (error) {
+					} catch {
 						log.warn({provider, socialId, userId}, 'Failed to update social info');
 					}
 
