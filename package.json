@@ -5,7 +5,6 @@
   "scripts": {
     "dev": "nodemon server.js",
     "lint": "xo",
-    "test": "jest",
     "knex": "knex"
   },
   "engines": {
@@ -31,13 +30,11 @@
     "passport-facebook": "^3.0.0",
     "passport-google-oauth20": "^2.0.0",
     "passport-local": "^1.0.0",
-    "passport-twitter": "^1.0.4",
     "pino": "^5.13.5",
     "pino-pretty": "^3.2.2"
   },
   "devDependencies": {
     "husky": "^3.0.9",
-    "jest": "^24.9.0",
     "nodemon": "^1.19.4",
     "xo": "^0.25.3"
   },
@@ -47,17 +44,7 @@
     }
   },
   "xo": {
-    "overrides": [
-      {
-        "files": [
-          "__tests__/**",
-          "**/test.js",
-          "**/spec.js",
-          "**/*.test.js",
-          "**/*.spec.js"
-        ],
-        "env": "jest"
-      }
-    ]
+    "semicolon": "true",
+    "space": "2"
   }
 }
