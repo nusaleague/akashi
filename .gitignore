@@ -63,3 +63,10 @@ typings/
 
 # next.js build output
 .next
+
+# ========================
+# Ignore khusus di project
+# ========================
+
+# Folder development
+.dev

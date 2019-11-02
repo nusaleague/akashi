@@ -1,6 +1,7 @@
 {
-  "xo.enable": true,
-  "xo.format.enable": true,
+  "editor.formatOnSave": true,
   "javascript.format.enable": false,
-  "javascript.validate.enable": false
+  "javascript.validate.enable": false,
+  "xo.enable": true,
+  "xo.format.enable": true
 }

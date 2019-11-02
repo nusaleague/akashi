@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "nodemon server.js",
+    "dev:files": "hs .dev/files -p ${PORT:-3001}",
     "lint": "xo",
     "knex": "knex"
   },
@@ -34,6 +35,7 @@
     "pino-pretty": "^3.2.2"
   },
   "devDependencies": {
+    "http-server": "^0.11.1",
     "husky": "^3.0.9",
     "nodemon": "^1.19.4",
     "xo": "^0.25.3"
@@ -45,6 +47,14 @@
   },
   "xo": {
     "semicolon": "true",
-    "space": "2"
+    "space": "2",
+    "overrides": [
+      {
+        "files": "migrations/**",
+        "rules": {
+          "unicorn/filename-case": "off"
+        }
+      }
+    ]
   }
 }
