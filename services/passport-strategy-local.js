@@ -1,5 +1,5 @@
-const {Strategy} = require('passport-local');
-const {serviceManager} = require('../lib/service');
+const { Strategy } = require('passport-local');
+const { serviceManager } = require('../lib/service');
 
 module.exports = {
   name: 'passport-strategy/local',

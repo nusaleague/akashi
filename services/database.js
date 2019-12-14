@@ -2,7 +2,7 @@ const knex = require('knex');
 
 module.exports = {
   name: 'database',
-  init({env}) {
+  init({ env }) {
     return knex({
       client: 'mysql',
       connection: {

@@ -1,9 +1,9 @@
-const {Strategy} = require('passport-facebook');
-const {serviceManager} = require('../lib/service');
+const { Strategy } = require('passport-facebook');
+const { serviceManager } = require('../lib/service');
 
 module.exports = {
   name: 'passport-strategy/facebook',
-  init({env}) {
+  init({ env }) {
     const User = serviceManager.get('models/user');
 
     const config = {
@@ -13,14 +13,11 @@ module.exports = {
       enableProof: true
     };
 
-    return new Strategy(
-      config,
-      (accessToken, refreshToken, profile, next) => {
-        (async () => {
-          const {id, _json: info} = profile;
-          next(null, await User.authenticateWithSocial('facebook', id, info));
-        })().catch(next);
-      }
-    );
+    return new Strategy(config, (accessToken, refreshToken, profile, next) => {
+      (async () => {
+        const { id, _json: info } = profile;
+        next(null, await User.authenticateWithSocial('facebook', id, info));
+      })().catch(next);
+    });
   }
 };

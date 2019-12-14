@@ -1,7 +1,7 @@
-const {createServer} = require('@tkesgar/chihiro');
+const { createServer } = require('@tkesgar/chihiro');
 const requireAll = require('../lib/require-all');
 const err = require('../lib/error');
-const {serviceManager} = require('../lib/service');
+const { serviceManager } = require('../lib/service');
 
 function dispatch(methods, request, user) {
   const log = serviceManager.get('log');
@@ -12,7 +12,7 @@ function dispatch(methods, request, user) {
       throw new err.MethodNotFoundError();
     }
 
-    const {mapParams, validateArgs, auth, fn} = methodInfo;
+    const { mapParams, validateArgs, auth, fn } = methodInfo;
 
     const args = (() => {
       if (typeof params === 'undefined') {
@@ -56,7 +56,7 @@ function dispatch(methods, request, user) {
         throw error;
       }
 
-      log.error({err: error}, 'Function call returned a non-standard error');
+      log.error({ err: error }, 'Function call returned a non-standard error');
       throw new err.InternalMethodError();
     }
   });

@@ -1,5 +1,5 @@
-const {Router: router, json} = require('express');
-const {serviceManager} = require('../lib/service');
+const { Router: router, json } = require('express');
+const { serviceManager } = require('../lib/service');
 
 module.exports = () => {
   const passport = serviceManager.get('passport');
@@ -15,9 +15,8 @@ module.exports = () => {
     res.sendStatus(204);
   });
 
-  route.post('/auth',
-    json(),
-    (req, res, next) => passport.authenticate('local', (err, user) => {
+  route.post('/auth', json(), (req, res, next) =>
+    passport.authenticate('local', (err, user) => {
       if (err) {
         next(err);
         return;

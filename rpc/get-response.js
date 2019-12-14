@@ -1,6 +1,6 @@
 const _ = require('lodash');
-const {default: ow} = require('ow');
-const {serviceManager} = require('../lib/service');
+const { default: ow } = require('ow');
+const { serviceManager } = require('../lib/service');
 
 module.exports = {
   name: 'getResponse',
@@ -15,7 +15,8 @@ module.exports = {
     const conn = serviceManager.get('database');
 
     const [response] = await conn('vote_response')
-      .where('user_id', userId).andWhere('fixture_id', fixtureId);
+      .where('user_id', userId)
+      .andWhere('fixture_id', fixtureId);
 
     if (!response) {
       return null;
@@ -24,7 +25,13 @@ module.exports = {
     const data = {};
 
     // eslint-disable-next-line camelcase
-    data.vote_response = _.pick(response, ['id', 'fixture_id', 'user_id', 'created_time', 'comment']);
+    data.vote_response = _.pick(response, [
+      'id',
+      'fixture_id',
+      'user_id',
+      'created_time',
+      'comment'
+    ]);
 
     // eslint-disable-next-line camelcase
     data.vote_response_match = await conn('vote_response_match')

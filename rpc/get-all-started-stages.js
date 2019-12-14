@@ -1,4 +1,4 @@
-const {serviceManager} = require('../lib/service');
+const { serviceManager } = require('../lib/service');
 
 module.exports = {
   name: 'getAllStartedStages',

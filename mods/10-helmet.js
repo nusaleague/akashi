@@ -1,5 +1,5 @@
 const helmet = require('helmet');
 
-module.exports = ({app}) => {
+module.exports = ({ app }) => {
   app.use(helmet());
 };

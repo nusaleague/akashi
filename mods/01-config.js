@@ -1,4 +1,4 @@
-module.exports = ({app, env}) => {
+module.exports = ({ app, env }) => {
   const nodeEnv = env.NODE_ENV;
   const trustProxy = JSON.parse(env.TRUST_PROXY);
 

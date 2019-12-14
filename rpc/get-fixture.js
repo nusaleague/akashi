@@ -1,6 +1,6 @@
 const _ = require('lodash');
-const {default: ow} = require('ow');
-const {serviceManager} = require('../lib/service');
+const { default: ow } = require('ow');
+const { serviceManager } = require('../lib/service');
 const getFixtureStatus = require('./util/get-fixture-status');
 
 module.exports = {
@@ -11,8 +11,7 @@ module.exports = {
   async fn(fixtureSlug) {
     const conn = serviceManager.get('database');
 
-    const [fixture] = await conn('vote_fixture')
-      .where('slug', fixtureSlug);
+    const [fixture] = await conn('vote_fixture').where('slug', fixtureSlug);
 
     if (!fixture) {
       return null;
@@ -28,7 +27,15 @@ module.exports = {
     data.status = status;
 
     // eslint-disable-next-line camelcase
-    data.vote_fixture = _.pick(fixture, ['id', 'slug', 'comp', 'season', 'stage', 'start_time', 'end_time']);
+    data.vote_fixture = _.pick(fixture, [
+      'id',
+      'slug',
+      'comp',
+      'season',
+      'stage',
+      'start_time',
+      'end_time'
+    ]);
 
     if (!status) {
       return data;
@@ -37,22 +44,23 @@ module.exports = {
     // eslint-disable-next-line camelcase
     data.vote_match = await conn('vote_match')
       .where('fixture_id', fixture.id)
-      .select([
-        'id',
-        'division'
-      ]);
+      .select(['id', 'division']);
 
     // eslint-disable-next-line camelcase
     data.vote_match_mascot = await conn('vote_match_mascot')
       .whereIn('match_id', _.map(data.vote_match, 'id'))
-      .select([
-        'match_id',
-        'mascot_id'
-      ]);
+      .select(['match_id', 'mascot_id']);
 
     data.mascot = await conn('mascot')
       .whereIn('id', _.map(data.vote_match_mascot, 'mascot_id'))
-      .select(['id', 'org_id', 'slug', 'short_name', 'color_hex', 'description']);
+      .select([
+        'id',
+        'org_id',
+        'slug',
+        'short_name',
+        'color_hex',
+        'description'
+      ]);
 
     data.org = await conn('org')
       .whereIn('id', _.uniq(_.map(data.mascot, 'org_id')))

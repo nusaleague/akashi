@@ -5,8 +5,9 @@
   "scripts": {
     "dev": "nodemon server.js",
     "dev:files": "hs .dev/files -p ${PORT:-3001}",
+    "knex": "knex",
     "lint": "xo",
-    "knex": "knex"
+    "format": "prettier --write **/*"
   },
   "engines": {
     "node": ">=10"
@@ -35,17 +36,35 @@
     "pino-pretty": "^3.2.2"
   },
   "devDependencies": {
+    "eslint-config-prettier": "^6.7.0",
+    "eslint-plugin-prettier": "^3.1.1",
     "http-server": "^0.11.1",
     "husky": "^3.0.9",
+    "lint-staged": "^9.5.0",
     "nodemon": "^1.19.4",
+    "prettier": "^1.19.1",
     "xo": "^0.25.3"
   },
   "husky": {
     "hooks": {
-      "pre-commit": "npm run lint"
+      "pre-commit": "lint-staged"
     }
   },
+  "lint-staged": {
+    "*.js": [
+      "xo --fix",
+      "prettier --write",
+      "git add"
+    ],
+    "*.{md}": [
+      "prettier --write",
+      "git add"
+    ]
+  },
   "xo": {
+    "extends": [
+      "plugin:prettier/recommended"
+    ],
     "semicolon": "true",
     "space": "2",
     "overrides": [
@@ -56,5 +75,10 @@
         }
       }
     ]
+  },
+  "prettier": {
+    "semi": true,
+    "singleQuote": true,
+    "tabWidth": 2
   }
 }

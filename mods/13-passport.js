@@ -1,6 +1,6 @@
-const {serviceManager} = require('../lib/service');
+const { serviceManager } = require('../lib/service');
 
-module.exports = ({app}) => {
+module.exports = ({ app }) => {
   const passport = serviceManager.get('passport');
 
   app.use(passport.initialize());

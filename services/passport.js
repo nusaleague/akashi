@@ -1,5 +1,5 @@
-const {Passport} = require('passport');
-const {serviceManager} = require('../lib/service');
+const { Passport } = require('passport');
+const { serviceManager } = require('../lib/service');
 
 module.exports = {
   name: 'passport',

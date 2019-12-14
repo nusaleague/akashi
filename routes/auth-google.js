@@ -1,13 +1,14 @@
-const {Router: router} = require('express');
-const {serviceManager} = require('../lib/service');
+const { Router: router } = require('express');
+const { serviceManager } = require('../lib/service');
 
-module.exports = ({env: {authRedirect}}) => {
+module.exports = ({ env: { authRedirect } }) => {
   const passport = serviceManager.get('passport');
   const log = serviceManager.get('log');
 
   const route = router();
 
-  route.get('/auth/google',
+  route.get(
+    '/auth/google',
     (req, res, next) => {
       req.session.next = req.query.next;
       next();
@@ -15,9 +16,10 @@ module.exports = ({env: {authRedirect}}) => {
     passport.authenticate('google')
   );
 
-  route.get('/auth/google/callback',
+  route.get(
+    '/auth/google/callback',
     (req, res, next) => {
-      log.debug({req}, 'Google auth callback');
+      log.debug({ req }, 'Google auth callback');
       next();
     },
     passport.authenticate('google'),

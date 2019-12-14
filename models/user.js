@@ -1,5 +1,5 @@
 const Haru = require('@tkesgar/haru');
-const {serviceManager} = require('../lib/service');
+const { serviceManager } = require('../lib/service');
 
 module.exports = {
   name: 'user',
@@ -11,7 +11,7 @@ module.exports = {
       static async findById(id) {
         const [row] = await db('user').where('id', id);
 
-        return row ? new User(row.id, {row}) : null;
+        return row ? new User(row.id, { row }) : null;
       }
 
       static async findByName(name) {
@@ -19,26 +19,31 @@ module.exports = {
           .whereNotNull('name')
           .andWhere('name', name);
 
-        return row ? new User(row.id, {row}) : null;
+        return row ? new User(row.id, { row }) : null;
       }
 
       static async authenticateWithSocial(provider, socialId, socialInfo) {
         const [socialRow] = await db('user_social')
-          .where('provider', provider).andWhere('id', socialId)
+          .where('provider', provider)
+          .andWhere('id', socialId)
           .select('user_id');
 
         if (socialRow) {
-          const {user_id: userId} = socialRow;
+          const { user_id: userId } = socialRow;
 
           try {
             await db('user_social')
-              .where('provider', provider).andWhere('id', socialId)
+              .where('provider', provider)
+              .andWhere('id', socialId)
               .update({
                 // eslint-disable-next-line camelcase
                 info_json: JSON.stringify(socialInfo)
               });
           } catch {
-            log.warn({provider, socialId, userId}, 'Failed to update social info');
+            log.warn(
+              { provider, socialId, userId },
+              'Failed to update social info'
+            );
           }
 
           return new User(userId);
@@ -65,9 +70,7 @@ module.exports = {
       }
 
       constructor(id, opts = {}) {
-        const {
-          row = null
-        } = opts;
+        const { row = null } = opts;
 
         this.id = id;
         this._cachedRow = row;

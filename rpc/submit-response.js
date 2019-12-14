@@ -1,7 +1,7 @@
 const _ = require('lodash');
-const {default: ow} = require('ow');
+const { default: ow } = require('ow');
 const err = require('../lib/error');
-const {serviceManager} = require('../lib/service');
+const { serviceManager } = require('../lib/service');
 const getFixtureStatus = require('./util/get-fixture-status');
 
 module.exports = {
@@ -12,27 +12,36 @@ module.exports = {
   validateArgs(userId, fixtureId, submitData) {
     ow(userId, ow.number.positive.uint32);
     ow(fixtureId, ow.number.positive.uint32);
-    ow(submitData, ow.object.exactShape({
-      comment: ow.optional.any(ow.nullOrUndefined, ow.string.nonEmpty.maxLength(2000)),
-      responses: ow.array.ofType(ow.object.exactShape({
-        matchId: ow.number.positive.uint32,
-        mascotId: ow.number.positive.uint32
-      }))
-    }));
+    ow(
+      submitData,
+      ow.object.exactShape({
+        comment: ow.optional.any(
+          ow.nullOrUndefined,
+          ow.string.nonEmpty.maxLength(2000)
+        ),
+        responses: ow.array.ofType(
+          ow.object.exactShape({
+            matchId: ow.number.positive.uint32,
+            mascotId: ow.number.positive.uint32
+          })
+        )
+      })
+    );
   },
   async fn(userId, fixtureId, submitData) {
     const conn = serviceManager.get('database');
 
-    const [fixture] = await conn('vote_fixture')
-      .where('id', fixtureId);
+    const [fixture] = await conn('vote_fixture').where('id', fixtureId);
 
     if (!fixture || !getFixtureStatus(fixture)) {
       throw new err.IllegalOperationError('Invalid fixture');
     }
 
     const matchMascots = await conn('vote_match_mascot')
-      .whereIn('match_id', function () {
-        this.from('vote_match').where('fixture_id', fixtureId).select('id');
+      .whereIn('match_id', function() {
+        this.from('vote_match')
+          .where('fixture_id', fixtureId)
+          .select('id');
       })
       .select('match_id', 'mascot_id');
 
@@ -45,8 +54,8 @@ module.exports = {
       throw new err.InvalidInputError('Invalid submit match data length');
     }
 
-    for (const {matchId, mascotId} of submitData.responses) {
-      const {[matchId]: map} = matchMascotMaps;
+    for (const { matchId, mascotId } of submitData.responses) {
+      const { [matchId]: map } = matchMascotMaps;
       if (!map || !map.includes(mascotId)) {
         throw new err.InvalidInputError('Invalid submit match data values');
       }
