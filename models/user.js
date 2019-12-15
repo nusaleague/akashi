@@ -1,116 +1,96 @@
-const Haru = require('@tkesgar/haru');
-const { serviceManager } = require('../lib/service');
+const UserRow = require('../utils/database/row/user');
+const UserSocialRow = require('../utils/database/row/user-social');
 
-module.exports = {
-  name: 'user',
-  init() {
-    const db = serviceManager.get('database');
-    const log = serviceManager.get('log');
+class UserModel {
+  static async findById(id) {
+    const userRow = await UserRow.findById(id);
+    return userRow ? new UserModel(userRow) : null;
+  }
 
-    return class User {
-      static async findById(id) {
-        const [row] = await db('user').where('id', id);
+  static async findByPassword(name, password) {
+    const userRow = await UserRow.findByName(name);
+    if (!userRow) {
+      return null;
+    }
 
-        return row ? new User(row.id, { row }) : null;
-      }
+    const passwordMatch = await userRow.passwordHash.test(password);
+    if (!passwordMatch) {
+      return null;
+    }
 
-      static async findByName(name) {
-        const [row] = await db('user')
-          .whereNotNull('name')
-          .andWhere('name', name);
+    return new UserModel(userRow);
+  }
 
-        return row ? new User(row.id, { row }) : null;
-      }
+  static async findBySocial(provider, id) {
+    const userSocialRow = await UserSocialRow.findById(provider, id);
+    if (!userSocialRow) {
+      return null;
+    }
 
-      static async authenticateWithSocial(provider, socialId, socialInfo) {
-        const [socialRow] = await db('user_social')
-          .where('provider', provider)
-          .andWhere('id', socialId)
-          .select('user_id');
+    const user = await UserModel.findById(userSocialRow.userId);
+    user.userSocialRows[provider] = userSocialRow;
 
-        if (socialRow) {
-          const { user_id: userId } = socialRow;
+    return user;
+  }
 
-          try {
-            await db('user_social')
-              .where('provider', provider)
-              .andWhere('id', socialId)
-              .update({
-                // eslint-disable-next-line camelcase
-                info_json: JSON.stringify(socialInfo)
-              });
-          } catch {
-            log.warn(
-              { provider, socialId, userId },
-              'Failed to update social info'
-            );
-          }
+  static async create(userData, conn) {
+    const userRow = await UserRow.insert(userData, conn);
+    return new UserModel(userRow);
+  }
 
-          return new User(userId);
-        }
+  constructor(userRow) {
+    this.userRow = userRow;
+    this.userSocialRows = {};
+  }
 
-        const userId = await db.transaction(async trx => {
-          const [id] = await trx('user').insert({
-            // eslint-disable-next-line camelcase
-            display_name: socialInfo.name
-          });
+  get id() {
+    return this.userRow.id;
+  }
 
-          await trx('user_social').insert({
-            /* eslint-disable camelcase */
-            provider,
-            id: socialId,
-            user_id: id,
-            info_json: JSON.stringify(socialInfo)
-            /* eslint-enable camelcase */
-          });
+  get name() {
+    return this.userRow.name;
+  }
 
-          return id;
-        });
-        return new User(userId);
-      }
+  get displayName() {
+    return this.userRow.displayName;
+  }
 
-      constructor(id, opts = {}) {
-        const { row = null } = opts;
-
-        this.id = id;
-        this._cachedRow = row;
-      }
-
-      async getRow() {
-        if (!this._cachedRow) {
-          this._cachedRow = await db('user').where('id', this.id);
-        }
-
-        return this._cachedRow;
-      }
-
-      async isStaff() {
-        const row = await this.getRow();
-        return row.name && row.name.startsWith('#');
-      }
-
-      async testPassword(password) {
-        const row = await this.getRow();
-        return Haru.test(row.password_hash, password);
-      }
-
-      async getPassportData() {
-        const data = {};
-
-        const row = await this.getRow();
-        Object.assign(data, {
-          id: row.id,
-          name: row.name,
-          displayName: row.display_name,
-          emailHash: row.email_hash,
-          emailVerified: Boolean(row.email_verified)
-        });
-
-        // TODO Implementasi tabel staff.
-        data.staff = await this.isStaff();
-
-        return data;
-      }
+  toJSON() {
+    return {
+      id: this.id,
+      name: this.name,
+      displayName: this.displayName
     };
   }
-};
+
+  async addSocial(provider, id, info) {
+    const userSocialRow = await UserSocialRow.insert(
+      {
+        provider,
+        id,
+        userId: this.id,
+        info
+      },
+      this.userRow.connection
+    );
+    this.userSocialRows[provider] = userSocialRow;
+  }
+
+  async updateSocialInfo(provider, info) {
+    if (!this.userSocialRows[provider]) {
+      const userSocialRow = await UserSocialRow.findByUserId(provider, this.id);
+
+      if (!userSocialRow) {
+        throw new Error(
+          `User ${this.id} does not have social row for ${provider}`
+        );
+      }
+
+      this.userSocialRows[provider] = userSocialRow;
+    }
+
+    await this.userSocialRows[provider].setInfo(info);
+  }
+}
+
+module.exports = UserModel;

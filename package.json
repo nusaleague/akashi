@@ -7,7 +7,8 @@
     "dev:files": "hs .dev/files -p ${PORT:-3001}",
     "knex": "knex",
     "lint": "xo",
-    "format": "prettier --write **/*"
+    "format": "prettier --write **/*",
+    "test": "jest"
   },
   "engines": {
     "node": ">=10"
@@ -17,15 +18,18 @@
     "@tkesgar/haru": "^2.0.2",
     "cookie-session": "^2.0.0-beta.3",
     "cors": "^2.8.5",
+    "csurf": "^1.10.0",
     "dotenv": "^8.2.0",
     "ejs": "^2.7.1",
     "express": "^4.17.1",
     "glob": "^7.1.5",
+    "got": "^10.0.4",
     "helmet": "^3.21.2",
     "knex": "^0.20.1",
     "lodash": "^4.17.15",
     "moment": "^2.24.0",
     "morgan": "^1.9.1",
+    "multer": "^1.4.2",
     "mysql": "^2.17.1",
     "ow": "^0.14.0",
     "passport": "^0.4.0",
@@ -33,13 +37,17 @@
     "passport-google-oauth20": "^2.0.0",
     "passport-local": "^1.0.0",
     "pino": "^5.13.5",
-    "pino-pretty": "^3.2.2"
+    "pino-pretty": "^3.2.2",
+    "sharp": "^0.23.4"
   },
   "devDependencies": {
+    "@hapi/hapi": "^18.4.0",
     "eslint-config-prettier": "^6.7.0",
     "eslint-plugin-prettier": "^3.1.1",
+    "hecks": "^2.1.1",
     "http-server": "^0.11.1",
     "husky": "^3.0.9",
+    "jest": "^24.9.0",
     "lint-staged": "^9.5.0",
     "nodemon": "^1.19.4",
     "prettier": "^1.19.1",
@@ -73,6 +81,13 @@
         "rules": {
           "unicorn/filename-case": "off"
         }
+      },
+      {
+        "files": [
+          "**/__tests__/**",
+          "**/*.(test|spec).js"
+        ],
+        "env": "jest"
       }
     ]
   },
@@ -80,5 +95,8 @@
     "semi": true,
     "singleQuote": true,
     "tabWidth": 2
+  },
+  "jest": {
+    "env": "node"
   }
 }

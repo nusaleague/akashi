@@ -1,33 +1,10 @@
-#!/usr/bin/env node
-const express = require('express');
-const requireAll = require('./lib/require-all');
-const {env} = require('./lib/env');
-const {serviceManager, loadAll} = require('./lib/service');
+require('./utils/env').loadEnv();
 
-async function main() {
-  const ctx = {
-    env
-  };
+const createApp = require('./utils/app');
+const log = require('./utils/log');
 
-  Object.assign(serviceManager.ctx, ctx);
+const port = process.env.PORT;
 
-  loadAll('./services/*.js');
-  loadAll('./models/*.js', undefined, {prefix: 'models/'});
-
-  const app = express();
-
-  requireAll('./mods/*.js').forEach(mod => mod({
-    ...ctx,
-    app
-  }));
-
-  const log = serviceManager.get('log');
-  app.listen(env.PORT, () => log.info(`Server listening on port ${env.PORT}`));
-}
-
-main().catch(error => {
-  const log = serviceManager.get('log');
-
-  log.fatal({err: error});
-  process.exitCode = 1;
+createApp().listen(port, () => {
+  log.info(`Server listening at port ${port}`);
 });
